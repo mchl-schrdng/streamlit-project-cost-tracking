@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.db_utils import init_db, add_consultant, get_consultants, update_consultant, delete_consultant
+from utils.db_utils import init_db
 
 # Initialize the database
 init_db()
@@ -19,41 +19,20 @@ if menu == "Home":
 
 # Consultants Section
 elif menu == "Consultants":
-    st.title("Consultants Management")
-    
-    # Add Consultant Form
-    with st.form("add_consultant_form"):
-        name = st.text_input("Consultant Name")
-        role = st.text_input("Role")
-        daily_rate = st.number_input("Daily Rate", min_value=0.0, step=0.01)
-        submitted = st.form_submit_button("Add Consultant")
-        if submitted:
-            if name and role and daily_rate:
-                add_consultant(name, role, daily_rate)
-                st.success("Consultant added successfully!")
-            else:
-                st.error("Please fill out all fields.")
-    
-    # Display Consultants
-    st.write("### All Consultants")
-    consultants = get_consultants()
-    if consultants:
-        for consultant in consultants:
-            st.write(f"**{consultant['name']}** ({consultant['role']}) - ${consultant['daily_rate']}/day")
-    else:
-        st.info("No consultants found.")
+    from pages.consultants import consultants_page
+    consultants_page()
 
-# Projects Section (Placeholder)
+# Projects Section
 elif menu == "Projects":
-    st.title("Projects Management")
-    st.write("Project management functionality coming soon!")
+    from pages.projects import projects_page
+    projects_page()
 
-# Weekly Agenda Section (Placeholder)
+# Weekly Agenda Section
 elif menu == "Weekly Agenda":
-    st.title("Weekly Agenda Management")
-    st.write("Weekly agenda functionality coming soon!")
+    from pages.weekly_agenda import weekly_agenda_page
+    weekly_agenda_page()
 
-# Cost Analysis Section (Placeholder)
+# Cost Analysis Section
 elif menu == "Cost Analysis":
-    st.title("Cost Analysis")
-    st.write("Cost analysis functionality coming soon!")
+    from pages.cost_analysis import cost_analysis_page
+    cost_analysis_page()
