@@ -23,43 +23,46 @@ def weekly_agenda_page():
                 format_func=lambda x: x[1],
                 key="agenda_project"
             )
-            week = st.number_input("Week Number", min_value=1, max_value=52, step=1, key="agenda_week")
-            days_worked = st.number_input("Planned Days Worked (0-7)", min_value=0, max_value=7, step=1, key="agenda_days")
-            submitted = st.form_submit_button("Add Schedule")
+            submitted = st.form_submit_button("Assign Consultant")
 
             if submitted:
                 consultant_id = consultant[0]
                 project_id = project[0]
-                if days_worked > 0:
-                    add_agenda(consultant_id, project_id, week, days_worked)
-                    st.success("Weekly schedule added successfully!")
-                else:
-                    st.error("Days worked must be greater than 0.")
-    else:
-        st.warning("Please add consultants and projects first.")
+                agenda = get_agenda()
+
+                # Assign consultant to all weeks for the project
+                for entry in agenda:
+                    if entry["project_id"] == project_id:
+                        update_agenda(
+                            agenda_id=entry["id"],
+                            consultant_id=consultant_id,
+                        )
+                st.success("Consultant assigned to all project weeks!")
+                st.rerun()
 
     st.divider()
 
-    # Display Weekly Agenda with Editable Planned and Actual Days Worked
+    # Display Editable Weekly Agenda
     st.subheader("All Weekly Schedules")
     agenda = get_agenda()
 
     if agenda:
-        # Prepare data for Streamlit's st.data_editor
+        # Prepare data for st.data_editor
         data = [
             {
                 "Week": entry["week"],
-                "Consultant": entry["consultant_name"],
+                "Start Date": entry["start_date"],
+                "End Date": entry["end_date"],
+                "Consultant": entry["consultant_name"] or "Unassigned",
                 "Project": entry["project_name"],
                 "Planned Days Worked": entry["days_worked"],
                 "Actual Days Worked": entry.get("actual_days_worked", 0),
-                "Difference": entry["days_worked"] - entry.get("actual_days_worked", 0),
                 "Schedule ID": entry["id"],
             }
             for entry in agenda
         ]
 
-        # Use st.data_editor to display and edit the data
+        # Editable DataFrame
         edited_data = st.data_editor(
             data,
             use_container_width=True,
@@ -67,39 +70,27 @@ def weekly_agenda_page():
             column_config={
                 "Planned Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
                 "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
-                "Difference": st.column_config.NumberColumn(min_value=-7, max_value=7, step=1, disabled=True),
             },
-            disabled=["Week", "Consultant", "Project", "Schedule ID"],  # Prevent editing non-editable fields
+            disabled=["Week", "Start Date", "End Date", "Consultant", "Project", "Schedule ID"],  # Lock uneditable columns
         )
 
-        # Check for changes and update the database
+        # Update database on changes
         for original, edited in zip(data, edited_data):
-            # Update Planned Days Worked if changed
             if original["Planned Days Worked"] != edited["Planned Days Worked"]:
                 update_agenda(
                     agenda_id=edited["Schedule ID"],
-                    days_worked=edited["Planned Days Worked"],
+                    days_worked=edited["Planned Days Worked"]
                 )
-                st.success(f"Updated Planned Days Worked for Week {edited['Week']}.")
+                st.success(f"Updated Planned Days Worked for Week {edited['Week']} ({edited['Start Date']} - {edited['End Date']}).")
+                st.rerun()
 
-            # Update Actual Days Worked if changed
             if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
                     agenda_id=edited["Schedule ID"],
-                    actual_days_worked=edited["Actual Days Worked"],
+                    actual_days_worked=edited["Actual Days Worked"]
                 )
-                st.success(f"Updated Actual Days Worked for Week {edited['Week']}.")
+                st.success(f"Updated Actual Days Worked for Week {edited['Week']} ({edited['Start Date']} - {edited['End Date']}).")
+                st.rerun()
 
-        # Display delete buttons
-        for entry in data:
-            delete_btn = st.button(f"Delete Schedule for Week {entry['Week']}", key=f"delete_agenda_{entry['Schedule ID']}")
-            if delete_btn:
-                delete_agenda(entry["Schedule ID"])
-                st.success(f"Schedule for Week {entry['Week']} deleted successfully!")
-                st.experimental_rerun()
     else:
-        st.info("No weekly schedules found. Add one using the form above.")
-
-# Call the page function
-if __name__ == "__main__":
-    weekly_agenda_page()
+        st.info("No weekly schedules available.")

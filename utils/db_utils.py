@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta
 
 # Database connection
 DB_PATH = "database.db"  # Path to SQLite database
@@ -42,64 +43,41 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            consultant_id INTEGER NOT NULL,
+            consultant_id INTEGER,
             project_id INTEGER NOT NULL,
             week INTEGER NOT NULL,
-            days_worked INTEGER NOT NULL,
-            actual_days_worked INTEGER DEFAULT 0,
+            start_date TEXT,
+            end_date TEXT,
+            days_worked INTEGER NOT NULL DEFAULT 0,
+            actual_days_worked INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (consultant_id) REFERENCES consultants (id),
             FOREIGN KEY (project_id) REFERENCES projects (id)
         );
     """)
-    
+
     conn.commit()
     conn.close()
 
 
-# CRUD Operations
+def calculate_project_weeks(start_date, end_date):
+    """Calculate all weeks with their start and end dates between the start and end dates of a project."""
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    weeks = []
 
-# Consultants
-def add_consultant(name, role, daily_rate):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO consultants (name, role, daily_rate)
-        VALUES (?, ?, ?);
-    """, (name, role, daily_rate))
-    conn.commit()
-    conn.close()
+    while start <= end:
+        week_start = start
+        week_end = min(start + timedelta(days=6), end)  # Ensure the week doesn't go beyond the project end date
+        weeks.append({
+            "week": week_start.isocalendar()[1],  # ISO week number
+            "start_date": week_start.strftime("%Y-%m-%d"),
+            "end_date": week_end.strftime("%Y-%m-%d"),
+        })
+        start += timedelta(days=7)  # Move to the next week
 
-
-def get_consultants():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM consultants;")
-    consultants = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in consultants]
+    return weeks
 
 
-def update_consultant(consultant_id, name, role, daily_rate):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE consultants
-        SET name = ?, role = ?, daily_rate = ?
-        WHERE id = ?;
-    """, (name, role, daily_rate, consultant_id))
-    conn.commit()
-    conn.close()
-
-
-def delete_consultant(consultant_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM consultants WHERE id = ?;", (consultant_id,))
-    conn.commit()
-    conn.close()
-
-
-# Projects
 def add_project(name, description, budget, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
@@ -107,6 +85,18 @@ def add_project(name, description, budget, start_date, end_date):
         INSERT INTO projects (name, description, budget, start_date, end_date)
         VALUES (?, ?, ?, ?, ?);
     """, (name, description, budget, start_date, end_date))
+
+    conn.commit()
+    project_id = cursor.lastrowid
+
+    # Precompute weeks for the project
+    weeks = calculate_project_weeks(start_date, end_date)
+    for week in weeks:
+        cursor.execute("""
+            INSERT INTO agenda (project_id, week, start_date, end_date, days_worked, actual_days_worked)
+            VALUES (?, ?, ?, ?, 0, 0);
+        """, (project_id, week["week"], week["start_date"], week["end_date"]))
+
     conn.commit()
     conn.close()
 
@@ -120,34 +110,22 @@ def get_projects():
     return [dict(row) for row in projects]
 
 
-def update_project(project_id, name, description, budget, start_date, end_date):
+def get_consultants():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM consultants;")
+    consultants = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in consultants]
+
+
+def add_consultant(name, role, daily_rate):
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        UPDATE projects
-        SET name = ?, description = ?, budget = ?, start_date = ?, end_date = ?
-        WHERE id = ?;
-    """, (name, description, budget, start_date, end_date, project_id))
-    conn.commit()
-    conn.close()
-
-
-def delete_project(project_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM projects WHERE id = ?;", (project_id,))
-    conn.commit()
-    conn.close()
-
-
-# Agenda
-def add_agenda(consultant_id, project_id, week, days_worked):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO agenda (consultant_id, project_id, week, days_worked)
-        VALUES (?, ?, ?, ?);
-    """, (consultant_id, project_id, week, days_worked))
+        INSERT INTO consultants (name, role, daily_rate)
+        VALUES (?, ?, ?);
+    """, (name, role, daily_rate))
     conn.commit()
     conn.close()
 
@@ -156,10 +134,10 @@ def get_agenda():
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT a.id, a.consultant_id, a.project_id, a.week, a.days_worked, a.actual_days_worked,
+        SELECT a.id, a.consultant_id, a.project_id, a.week, a.start_date, a.end_date, a.days_worked, a.actual_days_worked,
                c.name AS consultant_name, p.name AS project_name
         FROM agenda a
-        JOIN consultants c ON a.consultant_id = c.id
+        LEFT JOIN consultants c ON a.consultant_id = c.id
         JOIN projects p ON a.project_id = p.id;
     """)
     agenda = cursor.fetchall()
@@ -167,44 +145,23 @@ def get_agenda():
     return [dict(row) for row in agenda]
 
 
-def update_agenda(agenda_id, consultant_id=None, project_id=None, week=None, days_worked=None, actual_days_worked=None):
-    """
-    Update an agenda entry. Only updates the fields that are not None.
-    """
+def update_agenda(agenda_id, consultant_id=None, days_worked=None, actual_days_worked=None):
     conn = connect_db()
     cursor = conn.cursor()
-    # Build dynamic query based on provided values
     query = "UPDATE agenda SET "
-    updates = []
     params = []
-
     if consultant_id is not None:
-        updates.append("consultant_id = ?")
+        query += "consultant_id = ?, "
         params.append(consultant_id)
-    if project_id is not None:
-        updates.append("project_id = ?")
-        params.append(project_id)
-    if week is not None:
-        updates.append("week = ?")
-        params.append(week)
     if days_worked is not None:
-        updates.append("days_worked = ?")
+        query += "days_worked = ?, "
         params.append(days_worked)
     if actual_days_worked is not None:
-        updates.append("actual_days_worked = ?")
+        query += "actual_days_worked = ?, "
         params.append(actual_days_worked)
-
-    query += ", ".join(updates) + " WHERE id = ?"
+    query = query.rstrip(", ") + " WHERE id = ?"
     params.append(agenda_id)
 
     cursor.execute(query, tuple(params))
-    conn.commit()
-    conn.close()
-
-
-def delete_agenda(agenda_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM agenda WHERE id = ?;", (agenda_id,))
     conn.commit()
     conn.close()
