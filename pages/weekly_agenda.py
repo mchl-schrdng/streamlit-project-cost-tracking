@@ -45,42 +45,51 @@ def weekly_agenda_page():
     agenda = get_agenda()
 
     if agenda:
-        agenda_df = pd.DataFrame(agenda)
-        agenda_df["Actual Days Worked"] = agenda_df.get("actual_days_worked", 0)
+        # Prepare data for Streamlit's st.data_editor
+        data = [
+            {
+                "Week": entry["week"],
+                "Consultant": entry["consultant_name"],
+                "Project": entry["project_name"],
+                "Planned Days Worked": entry["days_worked"],
+                "Actual Days Worked": entry.get("actual_days_worked", 0),
+                "Schedule ID": entry["id"],
+            }
+            for entry in agenda
+        ]
 
-        # Editable DataFrame for Actual Days Worked
-        edited_agenda = st.data_editor(
-            agenda_df,
+        # Use st.data_editor to display and edit the data
+        edited_data = st.data_editor(
+            data,
             use_container_width=True,
-            num_rows="dynamic",
             hide_index=True,
             column_config={
-                "days_worked": "Planned Days Worked",
-                "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1)
-            }
+                "Planned Days Worked": "number",
+                "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
+            },
+            disabled=["Week", "Consultant", "Project", "Schedule ID"],  # Prevent editing non-editable fields
         )
 
-        # Update Actual Days Worked in the Database
-        for index, row in edited_agenda.iterrows():
-            if row["Actual Days Worked"] != agenda_df.loc[index, "actual_days_worked"]:
+        # Check for changes and update the database
+        for original, edited in zip(data, edited_data):
+            if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
-                    row["id"],
-                    row["consultant_id"],
-                    row["project_id"],
-                    row["week"],
-                    row["days_worked"],
-                    actual_days_worked=row["Actual Days Worked"]
+                    edited["Schedule ID"],
+                    consultant_id=None,  # These fields are not editable, so no need to pass them
+                    project_id=None,
+                    week=None,
+                    days_worked=original["Planned Days Worked"],  # Keep original planned days
+                    actual_days_worked=edited["Actual Days Worked"],
                 )
-                st.success(f"Updated Actual Days Worked for Week {row['week']}.")
+                st.success(f"Updated Actual Days Worked for Week {edited['Week']}.")
 
-        # Display a button to delete entries
-        for _, row in agenda_df.iterrows():
-            delete_btn = st.button(f"Delete Schedule for Week {row['week']}", key=f"delete_agenda_{row['id']}")
+        # Display delete buttons
+        for entry in data:
+            delete_btn = st.button(f"Delete Schedule for Week {entry['Week']}", key=f"delete_agenda_{entry['Schedule ID']}")
             if delete_btn:
-                delete_agenda(row["id"])
-                st.success(f"Schedule for Week {row['week']} deleted successfully!")
+                delete_agenda(entry["Schedule ID"])
+                st.success(f"Schedule for Week {entry['Week']} deleted successfully!")
                 st.experimental_rerun()
-
     else:
         st.info("No weekly schedules found. Add one using the form above.")
 
