@@ -1,12 +1,23 @@
 import streamlit as st
 from utils.db_utils import init_db
-from pages.weekly_agenda import weekly_agenda_page
 
 # Initialize the database
 init_db()
 
-# Title and Header
-st.title("Weekly Agenda Management")
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+menu = st.sidebar.radio("Go to:", ["Weekly Agenda", "Consultants", "Projects", "Cost Analysis"])
 
-# Directly Call Weekly Agenda Page
-weekly_agenda_page()
+# Load the appropriate page based on selection
+if menu == "Weekly Agenda":
+    from pages.weekly_agenda import weekly_agenda_page
+    weekly_agenda_page()
+elif menu == "Consultants":
+    from pages.consultants import consultants_page
+    consultants_page()
+elif menu == "Projects":
+    from pages.projects import projects_page
+    projects_page()
+elif menu == "Cost Analysis":
+    from pages.cost_analysis import cost_analysis_page
+    cost_analysis_page()
