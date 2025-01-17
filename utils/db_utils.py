@@ -143,6 +143,17 @@ def update_consultant(consultant_id, name, role, daily_rate):
     conn.commit()
     conn.close()
 
+def delete_consultant(consultant_id):
+    """
+    Delete a consultant from the database.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM consultants WHERE id = ?;
+    """, (consultant_id,))
+    conn.commit()
+    conn.close()
 
 def get_agenda():
     conn = connect_db()
