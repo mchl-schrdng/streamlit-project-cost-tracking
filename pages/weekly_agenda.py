@@ -24,7 +24,7 @@ def weekly_agenda_page():
                 key="agenda_project"
             )
             week = st.number_input("Week Number", min_value=1, max_value=52, step=1, key="agenda_week")
-            days_worked = st.number_input("Days Worked (0-7)", min_value=0, max_value=7, step=1, key="agenda_days")
+            days_worked = st.number_input("Planned Days Worked (0-7)", min_value=0, max_value=7, step=1, key="agenda_days")
             submitted = st.form_submit_button("Add Schedule")
 
             if submitted:
@@ -40,58 +40,47 @@ def weekly_agenda_page():
 
     st.divider()
 
-    # Display Weekly Agenda
+    # Display Weekly Agenda with Actual Days Worked
     st.subheader("All Weekly Schedules")
     agenda = get_agenda()
 
     if agenda:
-        for entry in agenda:
-            with st.expander(f"Week {entry['week']}: {entry['consultant_name']} on {entry['project_name']}"):
-                # Editable form for each agenda entry
-                with st.form(f"edit_agenda_form_{entry['id']}"):
-                    consultant = st.selectbox(
-                        "Select Consultant",
-                        options=[(c["id"], c["name"]) for c in consultants],
-                        index=[c["id"] for c in consultants].index(entry["consultant_id"]),
-                        format_func=lambda x: x[1],
-                        key=f"agenda_edit_consultant_{entry['id']}"
-                    )
-                    project = st.selectbox(
-                        "Select Project",
-                        options=[(p["id"], p["name"]) for p in projects],
-                        index=[p["id"] for p in projects].index(entry["project_id"]),
-                        format_func=lambda x: x[1],
-                        key=f"agenda_edit_project_{entry['id']}"
-                    )
-                    week = st.number_input(
-                        "Week Number", 
-                        min_value=1, max_value=52, step=1, 
-                        value=entry["week"], 
-                        key=f"agenda_edit_week_{entry['id']}"
-                    )
-                    days_worked = st.number_input(
-                        "Days Worked (0-7)", 
-                        min_value=0, max_value=7, step=1, 
-                        value=entry["days_worked"], 
-                        key=f"agenda_edit_days_{entry['id']}"
-                    )
-                    updated = st.form_submit_button("Update")
-                    if updated:
-                        consultant_id = consultant[0]
-                        project_id = project[0]
-                        if days_worked > 0:
-                            update_agenda(entry["id"], consultant_id, project_id, week, days_worked)
-                            st.success("Weekly schedule updated successfully!")
-                            st.experimental_rerun()
-                        else:
-                            st.error("Days worked must be greater than 0.")
+        agenda_df = pd.DataFrame(agenda)
+        agenda_df["Actual Days Worked"] = agenda_df.get("actual_days_worked", 0)
 
-                # Delete button
-                delete_btn = st.button(f"Delete Schedule for Week {entry['week']}", key=f"delete_agenda_{entry['id']}")
-                if delete_btn:
-                    delete_agenda(entry["id"])
-                    st.success("Schedule deleted successfully!")
-                    st.experimental_rerun()
+        # Editable DataFrame for Actual Days Worked
+        edited_agenda = st.data_editor(
+            agenda_df,
+            use_container_width=True,
+            num_rows="dynamic",
+            hide_index=True,
+            column_config={
+                "days_worked": "Planned Days Worked",
+                "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1)
+            }
+        )
+
+        # Update Actual Days Worked in the Database
+        for index, row in edited_agenda.iterrows():
+            if row["Actual Days Worked"] != agenda_df.loc[index, "actual_days_worked"]:
+                update_agenda(
+                    row["id"],
+                    row["consultant_id"],
+                    row["project_id"],
+                    row["week"],
+                    row["days_worked"],
+                    actual_days_worked=row["Actual Days Worked"]
+                )
+                st.success(f"Updated Actual Days Worked for Week {row['week']}.")
+
+        # Display a button to delete entries
+        for _, row in agenda_df.iterrows():
+            delete_btn = st.button(f"Delete Schedule for Week {row['week']}", key=f"delete_agenda_{row['id']}")
+            if delete_btn:
+                delete_agenda(row["id"])
+                st.success(f"Schedule for Week {row['week']} deleted successfully!")
+                st.experimental_rerun()
+
     else:
         st.info("No weekly schedules found. Add one using the form above.")
 
