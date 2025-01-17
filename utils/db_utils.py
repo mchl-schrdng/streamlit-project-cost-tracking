@@ -16,7 +16,7 @@ def init_db():
     """Initialize the database with necessary tables."""
     conn = connect_db()
     cursor = conn.cursor()
-    
+
     # Consultants table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS consultants (
@@ -26,7 +26,7 @@ def init_db():
             daily_rate REAL NOT NULL
         );
     """)
-    
+
     # Projects table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS projects (
@@ -38,7 +38,7 @@ def init_db():
             end_date TEXT NOT NULL
         );
     """)
-    
+
     # Agenda table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
@@ -78,6 +78,50 @@ def calculate_project_weeks(start_date, end_date):
     return weeks
 
 
+# Consultants
+def add_consultant(name, role, daily_rate):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO consultants (name, role, daily_rate)
+        VALUES (?, ?, ?);
+    """, (name, role, daily_rate))
+    conn.commit()
+    conn.close()
+
+
+def get_consultants():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM consultants;")
+    consultants = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in consultants]
+
+
+def update_consultant(consultant_id, name, role, daily_rate):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE consultants
+        SET name = ?, role = ?, daily_rate = ?
+        WHERE id = ?;
+    """, (name, role, daily_rate, consultant_id))
+    conn.commit()
+    conn.close()
+
+
+def delete_consultant(consultant_id):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM consultants WHERE id = ?;
+    """, (consultant_id,))
+    conn.commit()
+    conn.close()
+
+
+# Projects
 def add_project(name, description, budget, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
@@ -89,7 +133,6 @@ def add_project(name, description, budget, start_date, end_date):
     conn.commit()
     project_id = cursor.lastrowid
 
-    # Precompute weeks for the project
     weeks = calculate_project_weeks(start_date, end_date)
     for week in weeks:
         cursor.execute("""
@@ -110,55 +153,30 @@ def get_projects():
     return [dict(row) for row in projects]
 
 
-def get_consultants():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM consultants;")
-    consultants = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in consultants]
-
-
-def add_consultant(name, role, daily_rate):
+def update_project(project_id, name, description, budget, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO consultants (name, role, daily_rate)
-        VALUES (?, ?, ?);
-    """, (name, role, daily_rate))
-    conn.commit()
-    conn.close()
-
-def update_consultant(consultant_id, name, role, daily_rate):
-    """
-    Update an existing consultant in the database.
-    """
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE consultants
-        SET name = ?, role = ?, daily_rate = ?
+        UPDATE projects
+        SET name = ?, description = ?, budget = ?, start_date = ?, end_date = ?
         WHERE id = ?;
-    """, (name, role, daily_rate, consultant_id))
+    """, (name, description, budget, start_date, end_date, project_id))
     conn.commit()
     conn.close()
 
-def delete_consultant(consultant_id):
-    """
-    Delete a consultant from the database.
-    """
+
+def delete_project(project_id):
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        DELETE FROM consultants WHERE id = ?;
-    """, (consultant_id,))
+        DELETE FROM projects WHERE id = ?;
+    """, (project_id,))
     conn.commit()
     conn.close()
 
+
+# Agenda
 def add_agenda(consultant_id, project_id, week, start_date, end_date, days_worked=0, actual_days_worked=0):
-    """
-    Add a new agenda entry to the database.
-    """
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -202,5 +220,15 @@ def update_agenda(agenda_id, consultant_id=None, days_worked=None, actual_days_w
     params.append(agenda_id)
 
     cursor.execute(query, tuple(params))
+    conn.commit()
+    conn.close()
+
+
+def delete_agenda(agenda_id):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM agenda WHERE id = ?;
+    """, (agenda_id,))
     conn.commit()
     conn.close()
