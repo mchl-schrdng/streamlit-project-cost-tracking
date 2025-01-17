@@ -155,6 +155,20 @@ def delete_consultant(consultant_id):
     conn.commit()
     conn.close()
 
+def add_agenda(consultant_id, project_id, week, start_date, end_date, days_worked=0, actual_days_worked=0):
+    """
+    Add a new agenda entry to the database.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO agenda (consultant_id, project_id, week, start_date, end_date, days_worked, actual_days_worked)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+    """, (consultant_id, project_id, week, start_date, end_date, days_worked, actual_days_worked))
+    conn.commit()
+    conn.close()
+
+
 def get_agenda():
     conn = connect_db()
     cursor = conn.cursor()
