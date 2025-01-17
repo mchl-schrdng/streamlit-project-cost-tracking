@@ -51,7 +51,7 @@ def consultants_page():
                 if delete_btn:
                     delete_consultant(consultant['id'])
                     st.success(f"Consultant '{consultant['name']}' deleted successfully!")
-                    st.experimental_rerun()  # Refresh the page to reflect changes
+                    st.rerun()  # Refresh the page to reflect changes
     else:
         st.info("No consultants found. Add one using the form above.")
 

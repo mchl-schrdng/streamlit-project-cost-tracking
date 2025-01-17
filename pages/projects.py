@@ -71,14 +71,14 @@ def projects_page():
                                 new_end_date.strftime('%Y-%m-%d')
                             )
                             st.success(f"Project '{new_name}' updated successfully!")
-                            st.experimental_rerun()  # Refresh page to show changes
+                            st.rerun()  # Refresh page to show changes
 
                 # Delete button
                 delete_btn = st.button(f"Delete {project['name']}", key=f"delete_{project['id']}")
                 if delete_btn:
                     delete_project(project['id'])
                     st.success(f"Project '{project['name']}' deleted successfully!")
-                    st.experimental_rerun()  # Refresh page to show changes
+                    st.rerun()  # Refresh page to show changes
     else:
         st.info("No projects found. Add one using the form above.")
 

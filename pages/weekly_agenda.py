@@ -85,7 +85,7 @@ def weekly_agenda_page():
             if delete_btn:
                 delete_agenda(entry["Schedule ID"])
                 st.success(f"Schedule for Week {entry['Week']} deleted successfully!")
-                st.experimental_rerun()
+                st.rerun()
     else:
         st.info("No weekly schedules found. Add one using the form above.")
 
