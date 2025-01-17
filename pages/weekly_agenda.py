@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.db_utils import get_consultants, get_projects, add_agenda, get_agenda, update_agenda, delete_agenda
+from utils.db_utils import get_consultants, get_projects, add_agenda, get_agenda, update_agenda
 
 def weekly_agenda_page():
     st.title("Weekly Agenda Management")
