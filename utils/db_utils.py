@@ -1,102 +1,104 @@
 import sqlite3
 from datetime import datetime, timedelta
 
-# Database connection
-DB_PATH = "database.db"  # Path to SQLite database
+DB_PATH = "database.db"
 
 
 def connect_db():
-    """Connect to the SQLite database."""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Enable dictionary-like row access
+    conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
-    """Initialize the database with necessary tables."""
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Consultants table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS consultants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            daily_rate REAL NOT NULL
-        );
-    """)
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS consultants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                daily_rate REAL NOT NULL
+            );
+        """)
 
-    # Projects table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            budget REAL NOT NULL,
-            start_date TEXT NOT NULL,
-            end_date TEXT NOT NULL
-        );
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                budget REAL NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL
+            );
+        """)
 
-    # Agenda table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS agenda (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            consultant_id INTEGER,
-            project_id INTEGER NOT NULL,
-            week INTEGER NOT NULL,
-            start_date TEXT,
-            end_date TEXT,
-            days_worked INTEGER NOT NULL DEFAULT 0,
-            actual_days_worked INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY (consultant_id) REFERENCES consultants (id),
-            FOREIGN KEY (project_id) REFERENCES projects (id)
-        );
-    """)
-
-    conn.commit()
-    conn.close()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agenda (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                consultant_id INTEGER,
+                project_id INTEGER NOT NULL,
+                week INTEGER NOT NULL,
+                start_date TEXT,
+                end_date TEXT,
+                days_worked INTEGER NOT NULL DEFAULT 0,
+                actual_days_worked INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (consultant_id) REFERENCES consultants (id),
+                FOREIGN KEY (project_id) REFERENCES projects (id)
+            );
+        """)
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+    finally:
+        conn.commit()
+        conn.close()
 
 
 def calculate_project_weeks(start_date, end_date):
-    """Calculate all weeks with their start and end dates between the start and end dates of a project."""
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
     weeks = []
 
     while start <= end:
         week_start = start
-        week_end = min(start + timedelta(days=6), end)  # Ensure the week doesn't go beyond the project end date
+        week_end = min(start + timedelta(days=6), end)
         weeks.append({
-            "week": week_start.isocalendar()[1],  # ISO week number
+            "week": week_start.isocalendar()[1],
             "start_date": week_start.strftime("%Y-%m-%d"),
             "end_date": week_end.strftime("%Y-%m-%d"),
         })
-        start += timedelta(days=7)  # Move to the next week
+        start += timedelta(days=7)
 
     return weeks
 
 
-# Consultants
-def add_consultant(name, role, daily_rate):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO consultants (name, role, daily_rate)
-        VALUES (?, ?, ?);
-    """, (name, role, daily_rate))
-    conn.commit()
-    conn.close()
-
-
 def get_consultants():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM consultants;")
-    consultants = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in consultants]
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM consultants;")
+        consultants = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in consultants]
+    except sqlite3.OperationalError as e:
+        print(f"Error fetching consultants: {e}")
+        return []
+
+
+def add_consultant(name, role, daily_rate):
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO consultants (name, role, daily_rate)
+            VALUES (?, ?, ?);
+        """, (name, role, daily_rate))
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError as e:
+        print(f"Error adding consultant: {e}")
 
 
 def update_consultant(consultant_id, name, role, daily_rate):
@@ -121,7 +123,15 @@ def delete_consultant(consultant_id):
     conn.close()
 
 
-# Projects
+def get_projects():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM projects;")
+    projects = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in projects]
+
+
 def add_project(name, description, budget, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
@@ -144,15 +154,6 @@ def add_project(name, description, budget, start_date, end_date):
     conn.close()
 
 
-def get_projects():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM projects;")
-    projects = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in projects]
-
-
 def update_project(project_id, name, description, budget, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
@@ -171,18 +172,6 @@ def delete_project(project_id):
     cursor.execute("""
         DELETE FROM projects WHERE id = ?;
     """, (project_id,))
-    conn.commit()
-    conn.close()
-
-
-# Agenda
-def add_agenda(consultant_id, project_id, week, start_date, end_date, days_worked=0, actual_days_worked=0):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO agenda (consultant_id, project_id, week, start_date, end_date, days_worked, actual_days_worked)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
-    """, (consultant_id, project_id, week, start_date, end_date, days_worked, actual_days_worked))
     conn.commit()
     conn.close()
 
@@ -220,15 +209,5 @@ def update_agenda(agenda_id, consultant_id=None, days_worked=None, actual_days_w
     params.append(agenda_id)
 
     cursor.execute(query, tuple(params))
-    conn.commit()
-    conn.close()
-
-
-def delete_agenda(agenda_id):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        DELETE FROM agenda WHERE id = ?;
-    """, (agenda_id,))
     conn.commit()
     conn.close()

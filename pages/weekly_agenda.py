@@ -1,11 +1,11 @@
 import streamlit as st
-from utils.db_utils import get_consultants, get_projects, add_agenda, get_agenda, update_agenda
+from utils.db_utils import get_consultants, get_projects, get_agenda, update_agenda
 
 def weekly_agenda_page():
     st.title("Weekly Agenda Management")
 
     # Add Weekly Schedule Form
-    st.subheader("Add Weekly Schedule")
+    st.subheader("Assign Consultant to a Project")
     consultants = get_consultants()
     projects = get_projects()
 
@@ -30,20 +30,22 @@ def weekly_agenda_page():
                 project_id = project[0]
                 agenda = get_agenda()
 
-                # Assign consultant to all weeks for the project
+                # Assign consultant to all weeks for the selected project
                 for entry in agenda:
                     if entry["project_id"] == project_id:
                         update_agenda(
                             agenda_id=entry["id"],
                             consultant_id=consultant_id,
                         )
-                st.success("Consultant assigned to all project weeks!")
-                st.rerun()
+                st.success(f"Consultant assigned to all weeks of the project!")
+                st.experimental_rerun()
+    else:
+        st.warning("Please ensure consultants and projects are added before assigning.")
 
     st.divider()
 
     # Display Editable Weekly Agenda
-    st.subheader("All Weekly Schedules")
+    st.subheader("Weekly Schedules")
     agenda = get_agenda()
 
     if agenda:
@@ -82,7 +84,7 @@ def weekly_agenda_page():
                     days_worked=edited["Planned Days Worked"]
                 )
                 st.success(f"Updated Planned Days Worked for Week {edited['Week']} ({edited['Start Date']} - {edited['End Date']}).")
-                st.rerun()
+                st.experimental_rerun()
 
             if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
@@ -90,7 +92,7 @@ def weekly_agenda_page():
                     actual_days_worked=edited["Actual Days Worked"]
                 )
                 st.success(f"Updated Actual Days Worked for Week {edited['Week']} ({edited['Start Date']} - {edited['End Date']}).")
-                st.rerun()
+                st.experimental_rerun()
 
     else:
-        st.info("No weekly schedules available.")
+        st.info("No weekly schedules found. Add a project and assign consultants to generate schedules.")

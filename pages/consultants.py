@@ -13,8 +13,11 @@ def consultants_page():
         submitted = st.form_submit_button("Add Consultant")
         if submitted:
             if name and role and daily_rate:
-                add_consultant(name, role, daily_rate)
-                st.success(f"Consultant '{name}' added successfully!")
+                try:
+                    add_consultant(name, role, daily_rate)
+                    st.success(f"Consultant '{name}' added successfully!")
+                except Exception as e:
+                    st.error(f"Error adding consultant: {e}")
             else:
                 st.error("All fields are required.")
 
@@ -43,18 +46,13 @@ def consultants_page():
                         if new_name and new_role and new_rate:
                             update_consultant(consultant['id'], new_name, new_role, new_rate)
                             st.success(f"Consultant '{new_name}' updated successfully!")
-                        else:
-                            st.error("All fields are required.")
+                            st.experimental_rerun()
 
                 # Delete button
                 delete_btn = st.button(f"Delete {consultant['name']}", key=f"delete_{consultant['id']}")
                 if delete_btn:
                     delete_consultant(consultant['id'])
                     st.success(f"Consultant '{consultant['name']}' deleted successfully!")
-                    st.rerun()  # Refresh the page to reflect changes
+                    st.experimental_rerun()
     else:
         st.info("No consultants found. Add one using the form above.")
-
-# Call the page function
-if __name__ == "__main__":
-    consultants_page()
