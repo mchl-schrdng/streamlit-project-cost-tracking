@@ -155,8 +155,8 @@ def get_agenda():
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT a.id, c.name as consultant_name, p.name as project_name, 
-               a.week, a.days_worked
+        SELECT a.id, a.consultant_id, a.project_id, a.week, a.days_worked,
+               c.name AS consultant_name, p.name AS project_name
         FROM agenda a
         JOIN consultants c ON a.consultant_id = c.id
         JOIN projects p ON a.project_id = p.id;
@@ -164,7 +164,6 @@ def get_agenda():
     agenda = cursor.fetchall()
     conn.close()
     return [dict(row) for row in agenda]
-
 
 def update_agenda(agenda_id, consultant_id, project_id, week, days_worked):
     conn = connect_db()
