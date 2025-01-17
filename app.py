@@ -1,5 +1,5 @@
 import streamlit as st
-from db_utils import init_db, add_consultant, get_consultants, update_consultant, delete_consultant
+from utils.db_utils import init_db, add_consultant, get_consultants, update_consultant, delete_consultant
 
 # Initialize the database
 init_db()
