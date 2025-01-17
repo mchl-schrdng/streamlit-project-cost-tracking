@@ -129,6 +129,20 @@ def add_consultant(name, role, daily_rate):
     conn.commit()
     conn.close()
 
+def update_consultant(consultant_id, name, role, daily_rate):
+    """
+    Update an existing consultant in the database.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE consultants
+        SET name = ?, role = ?, daily_rate = ?
+        WHERE id = ?;
+    """, (name, role, daily_rate, consultant_id))
+    conn.commit()
+    conn.close()
+
 
 def get_agenda():
     conn = connect_db()
