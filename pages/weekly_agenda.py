@@ -64,7 +64,7 @@ def weekly_agenda_page():
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Planned Days Worked": "number",
+                "Planned Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
                 "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
             },
             disabled=["Week", "Consultant", "Project", "Schedule ID"],  # Prevent editing non-editable fields
@@ -74,7 +74,7 @@ def weekly_agenda_page():
         for original, edited in zip(data, edited_data):
             if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
-                    edited["Schedule ID"],
+                    agenda_id=edited["Schedule ID"],
                     actual_days_worked=edited["Actual Days Worked"],
                 )
                 st.success(f"Updated Actual Days Worked for Week {edited['Week']}.")
@@ -85,7 +85,7 @@ def weekly_agenda_page():
             if delete_btn:
                 delete_agenda(entry["Schedule ID"])
                 st.success(f"Schedule for Week {entry['Week']} deleted successfully!")
-                st.rerun()
+                st.experimental_rerun()
     else:
         st.info("No weekly schedules found. Add one using the form above.")
 
