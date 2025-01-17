@@ -40,7 +40,7 @@ def weekly_agenda_page():
 
     st.divider()
 
-    # Display Weekly Agenda with Actual Days Worked
+    # Display Weekly Agenda with Editable Planned and Actual Days Worked
     st.subheader("All Weekly Schedules")
     agenda = get_agenda()
 
@@ -53,6 +53,7 @@ def weekly_agenda_page():
                 "Project": entry["project_name"],
                 "Planned Days Worked": entry["days_worked"],
                 "Actual Days Worked": entry.get("actual_days_worked", 0),
+                "Difference": entry["days_worked"] - entry.get("actual_days_worked", 0),
                 "Schedule ID": entry["id"],
             }
             for entry in agenda
@@ -66,12 +67,22 @@ def weekly_agenda_page():
             column_config={
                 "Planned Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
                 "Actual Days Worked": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
+                "Difference": st.column_config.NumberColumn(min_value=-7, max_value=7, step=1, disabled=True),
             },
             disabled=["Week", "Consultant", "Project", "Schedule ID"],  # Prevent editing non-editable fields
         )
 
         # Check for changes and update the database
         for original, edited in zip(data, edited_data):
+            # Update Planned Days Worked if changed
+            if original["Planned Days Worked"] != edited["Planned Days Worked"]:
+                update_agenda(
+                    agenda_id=edited["Schedule ID"],
+                    days_worked=edited["Planned Days Worked"],
+                )
+                st.success(f"Updated Planned Days Worked for Week {edited['Week']}.")
+
+            # Update Actual Days Worked if changed
             if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
                     agenda_id=edited["Schedule ID"],
