@@ -46,6 +46,7 @@ def init_db():
             project_id INTEGER NOT NULL,
             week INTEGER NOT NULL,
             days_worked INTEGER NOT NULL,
+            actual_days_worked INTEGER DEFAULT 0,
             FOREIGN KEY (consultant_id) REFERENCES consultants (id),
             FOREIGN KEY (project_id) REFERENCES projects (id)
         );
@@ -155,7 +156,7 @@ def get_agenda():
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT a.id, a.consultant_id, a.project_id, a.week, a.days_worked,
+        SELECT a.id, a.consultant_id, a.project_id, a.week, a.days_worked, a.actual_days_worked,
                c.name AS consultant_name, p.name AS project_name
         FROM agenda a
         JOIN consultants c ON a.consultant_id = c.id
@@ -165,14 +166,38 @@ def get_agenda():
     conn.close()
     return [dict(row) for row in agenda]
 
-def update_agenda(agenda_id, consultant_id, project_id, week, days_worked):
+
+def update_agenda(agenda_id, consultant_id=None, project_id=None, week=None, days_worked=None, actual_days_worked=None):
+    """
+    Update an agenda entry. Only updates the fields that are not None.
+    """
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE agenda
-        SET consultant_id = ?, project_id = ?, week = ?, days_worked = ?
-        WHERE id = ?;
-    """, (consultant_id, project_id, week, days_worked, agenda_id))
+    # Build dynamic query based on provided values
+    query = "UPDATE agenda SET "
+    updates = []
+    params = []
+
+    if consultant_id is not None:
+        updates.append("consultant_id = ?")
+        params.append(consultant_id)
+    if project_id is not None:
+        updates.append("project_id = ?")
+        params.append(project_id)
+    if week is not None:
+        updates.append("week = ?")
+        params.append(week)
+    if days_worked is not None:
+        updates.append("days_worked = ?")
+        params.append(days_worked)
+    if actual_days_worked is not None:
+        updates.append("actual_days_worked = ?")
+        params.append(actual_days_worked)
+
+    query += ", ".join(updates) + " WHERE id = ?"
+    params.append(agenda_id)
+
+    cursor.execute(query, tuple(params))
     conn.commit()
     conn.close()
 

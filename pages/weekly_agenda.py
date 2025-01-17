@@ -75,10 +75,6 @@ def weekly_agenda_page():
             if original["Actual Days Worked"] != edited["Actual Days Worked"]:
                 update_agenda(
                     edited["Schedule ID"],
-                    consultant_id=None,  # These fields are not editable, so no need to pass them
-                    project_id=None,
-                    week=None,
-                    days_worked=original["Planned Days Worked"],  # Keep original planned days
                     actual_days_worked=edited["Actual Days Worked"],
                 )
                 st.success(f"Updated Actual Days Worked for Week {edited['Week']}.")
